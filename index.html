@@ -52,12 +52,15 @@ document.body.appendChild(renderer.domElement);
 
 //const controls = new OrbitControls(camera, renderer.domElement);
 
+const objects = new THREE.Group();
+
 const solarRay = new THREE.DirectionalLight(0xffffff, 5);
 solarRay.position.set(-1, 0, 0);
-scene.add(solarRay);
+//scene.add(solarRay);
+objects.add(solarRay);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
+objects.add(ambientLight);
 
 //let yearFrac = 82 / 365;
 let rotDoy = 0;
@@ -80,7 +83,7 @@ const earthAxis = new THREE.Mesh(
 );
 const earth = new THREE.Group();
 earth.add(earthBody, earthAxis);
-scene.add(earth);
+objects.add(earth);
 let rotEarth = 0;
 
 const leo = new THREE.Mesh(
@@ -113,14 +116,14 @@ const leoOrbit = new THREE.Line(
     opacity: 0.3,
   })
 );
-scene.add(leoOrbit);
+objects.add(leoOrbit);
 
 const geo = new THREE.Mesh(
   //new THREE.SphereGeometry(0.5, 16, 16),
   new THREE.IcosahedronGeometry(0.4),
   new THREE.MeshStandardMaterial({ color: 0xff0000, wireframe: true, }),
 );
-scene.add(geo);
+objects.add(geo);
 const rGeo = rEarth + 35.786;
 
 const geoOrbit = new THREE.Line(
@@ -140,7 +143,17 @@ const geoOrbit = new THREE.Line(
     opacity: 0.3,
   })
 );
-scene.add(geoOrbit);
+objects.add(geoOrbit);
+scene.add(objects);
+
+/*
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshNormalMaterial()
+);
+cube.position.set(0, 0.5, 0);
+scene.add(cube);
+*/
 
 let arToolkitSource, arToolkitContext, arMarkerControls;
 
@@ -160,7 +173,7 @@ function arInit() {
   );
 
   arToolkitContext = new ArToolkitContext({
-    cameraParametersUrl: './camera_para.dat',
+    cameraParametersUrl: 'camera_para.dat',
     detectionMode: 'mono',
   });
 
@@ -175,10 +188,12 @@ function arInit() {
   });
   */
 
-  arMarkerControls = new ArMarkerControls(arToolkitContext, camera, {
+  arMarkerControls = new ArMarkerControls(arToolkitContext, objects, {
     type: 'pattern',
-    patternUrl: './patt.hiro',
-    changeMatrixMode: 'cameraTransformMatrix',
+    patternUrl: 'patt.hiro',
+    //changeMatrixMode: 'cameraTransformMatrix',
+    changeMatrixMode: 'modelViewMatrix',
+    size: 5,
   });
 
   arMarkerControls.addEventListener("markerFound", () => {
