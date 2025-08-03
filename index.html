@@ -5,10 +5,8 @@
     <title>ar</title>
     <style>
 body {
-  background-color: rgba(0, 0, 0, 0);
   margin: 0;
   padding: 0;
-  
 }
     </style>
   </head>
@@ -43,6 +41,7 @@ camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(w, h);
+renderer.setClearColor(new THREE.Color(), 0);
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
