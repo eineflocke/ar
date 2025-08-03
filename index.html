@@ -163,6 +163,11 @@ const markerControls = new ArMarkerControls(arToolkitContext, camera, {
   patternUrl: "./patt.hiro",
   changeMatrixMode: "cameraTransformMatrix",
 });
+markerControls.addEventListener("markerFound", () => {
+  // マーカーが見つかっている時は毎秒呼ばれる
+  console.log("marker found");
+  document.body.style['background-color'] = '#f00';
+});
 
 const onResize = () => {
   arToolkitSource.onResizeElement();
