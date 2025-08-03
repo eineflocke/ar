@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>ar</title>
+    <style>
+    </style>
+  </head>
+  <body>
+    <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/",
+    "threex": "https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex.mjs"
+  }
+}
+    </script>
+    <script type="module">
+'use strict';
+
+import * as THREE from 'three';
+//import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ArToolkitSource, ArToolkitContext, ArMarkerControls }  from 'threex';
+
+const D2R = Math.PI / 180;
+
+let w = window.innerWidth;
+let h = window.innerHeight;
+
+const timeRate = 14400;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 1000);
+camera.position.set(-60, 5, 0);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(w, h);
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+//const controls = new OrbitControls(camera, renderer.domElement);
+
+const solarRay = new THREE.DirectionalLight(0xffffff, 5);
+solarRay.position.set(-1, 0, 0);
+scene.add(solarRay);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+//let yearFrac = 82 / 365;
+let rotDoy = 0;
+const qt234 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 23.4 * D2R);
+
+const rEarth = 6.371;
+const earthBody = new THREE.Mesh(
+  new THREE.SphereGeometry(rEarth, 64, 32),
+  //new THREE.MeshStandardMaterial({ color: 0x0000ff }),
+  new THREE.MeshStandardMaterial({
+    map: new THREE.TextureLoader().load('https://threejs-earth.s3.ap-northeast-1.amazonaws.com/earth.jpeg'),
+    roughness: 0.6,
+    color: 0xffffff,
+  }),
+);
+const earthAxis = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.05, 0.05, 3 * rEarth, 6),
+  //new THREE.MeshStandardMaterial({ color: 0x999999, }),
+  new THREE.MeshBasicMaterial({ color: 0xcccccc, }),
+);
+const earth = new THREE.Group();
+earth.add(earthBody, earthAxis);
+scene.add(earth);
+let rotEarth = 0;
+
+const leo = new THREE.Mesh(
+  //new THREE.SphereGeometry(0.5, 16, 16),
+  new THREE.IcosahedronGeometry(0.4),
+  new THREE.MeshStandardMaterial({ color: 0x00ff00, wireframe: true, }),
+);
+scene.add(leo);
+const rLeo = rEarth + 0.850;
+let rotLeo = 0; // (13.5 / 24) * 2 * Math.PI;
+const inclLeo = 97 * D2R;
+const radLTAN = (10.5 / 24) * 2 * Math.PI;
+const qtLeoIncl = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(Math.cos(radLTAN), 0, Math.sin(radLTAN)), inclLeo);
+const qtLeo = qt234.clone().multiply(qtLeoIncl);
+
+const leoOrbit = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints(
+    [...Array(361)]
+      .map((_, i) => i * Math.PI / 180)
+      .map(lonr => new THREE.Vector3(
+        rLeo * Math.cos(lonr),
+        0,
+        rLeo * Math.sin(lonr)
+      ).applyQuaternion(qtLeo)
+      )
+  ),
+  new THREE.LineBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.3,
+  })
+);
+scene.add(leoOrbit);
+
+const geo = new THREE.Mesh(
+  //new THREE.SphereGeometry(0.5, 16, 16),
+  new THREE.IcosahedronGeometry(0.4),
+  new THREE.MeshStandardMaterial({ color: 0xff0000, wireframe: true, }),
+);
+scene.add(geo);
+const rGeo = rEarth + 35.786;
+
+const geoOrbit = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints(
+    [...Array(361)]
+      .map((_, i) => i * Math.PI / 180)
+      .map(lonr => new THREE.Vector3(
+        rGeo * Math.cos(lonr),
+        0,
+        rGeo * Math.sin(lonr)
+      ).applyQuaternion(qt234)
+      )
+  ),
+  new THREE.LineBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.3,
+  })
+);
+scene.add(geoOrbit);
+
+const arToolkitSource = new ArToolkitSource({
+  sourceType: "webcam",
+});
+
+arToolkitSource.init(() => setTimeout(onResize, 1000));
+
+const arToolkitContext = new ArToolkitContext({
+  cameraParametersUrl: "./camera_para.dat",
+  detectionMode: "mono",
+});
+
+arToolkitContext.init(() => camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix()));
+
+let onRenderFcts = [];
+onRenderFcts.push(() => {
+  if (arToolkitSource.ready === false) return;
+  arToolkitContext.update(arToolkitSource.domElement);
+  scene.visible = camera.visible;
+});
+
+const markerControls = new ArMarkerControls(arToolkitContext, camera, {
+  type: "pattern",
+  // ※2 マーカーのpattファイルのパスを入れる
+  patternUrl: "./patt.hiro",
+  changeMatrixMode: "cameraTransformMatrix",
+});
+
+const onResize = () => {
+  arToolkitSource.onResizeElement();
+  arToolkitSource.copyElementSizeTo(renderer.domElement);
+  if (arToolkitContext.arController !== null) {
+    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+  }
+};
+
+/////////////
+
+function animate() {
+
+  rotDoy += (timeRate / 86400 / 6) * (2 * Math.PI / 60);
+  solarRay.position.set(-1 * Math.cos(rotDoy), 0, Math.sin(rotDoy));
+
+  rotEarth += (timeRate / 86400) * (2 * Math.PI / 60);
+  const qtEarth = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotEarth);
+  earth.setRotationFromQuaternion(qt234.clone().multiply(qtEarth));
+
+  rotLeo += 10 * (timeRate / 86400) * (2 * Math.PI / 60);
+  const posLeo = new THREE.Vector3(rLeo * Math.cos(rotLeo), 0, -1 * rLeo * Math.sin(rotLeo));
+  posLeo.applyQuaternion(qtLeo);
+  //const qtLeo2 = qt234.clone().multiply();
+  leo.position.set(...posLeo.toArray());
+
+  const rotGeo = rotEarth + 140.7 * D2R;
+  const posGeo = new THREE.Vector3(rGeo * Math.cos(rotGeo), 0, -1 * rGeo * Math.sin(rotGeo));
+  posGeo.applyQuaternion(qt234);
+  geo.position.set(...posGeo.toArray());
+
+  if (arToolkitSource.ready) {
+    arToolkitContext.update(arToolkitSource.domElement);
+    scene.visible = camera.visible;
+  }
+
+  renderer.render(scene, camera);
+
+}
+
+renderer.setAnimationLoop(animate);
+
+window.onresize = onResize;
+    </script>
+  </body>
+</html>
