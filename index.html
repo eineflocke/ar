@@ -142,46 +142,52 @@ const geoOrbit = new THREE.Line(
 );
 scene.add(geoOrbit);
 
-const arToolkitSource = new ArToolkitSource({
-  sourceType: 'webcam',
-  sourceWidth: w,
-  sourceHeight: h,
-  displayWidth: w,
-  displayHeight: h,
-});
+let arToolkitSource, arToolkitContext, arMarkerControls;
 
-arToolkitSource.init(
-  () => setTimeout(onResize, 2000),
-  () => {}
-);
+function arInit() {
 
-const arToolkitContext = new ArToolkitContext({
-  cameraParametersUrl: './camera_para.dat',
-  detectionMode: 'mono',
-});
+  arToolkitSource = new ArToolkitSource({
+    sourceType: 'webcam',
+    sourceWidth: w,
+    sourceHeight: h,
+    displayWidth: w,
+    displayHeight: h,
+  });
 
-arToolkitContext.init(() => camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix()));
+  arToolkitSource.init(
+    () => setTimeout(onResize, 2000),
+    () => {}
+  );
 
-/*
-let onRenderFcts = [];
-onRenderFcts.push(() => {
-  if (arToolkitSource.ready === false) return;
-  arToolkitContext.update(arToolkitSource.domElement);
-  scene.visible = camera.visible;
-});
-*/
+  arToolkitContext = new ArToolkitContext({
+    cameraParametersUrl: './camera_para.dat',
+    detectionMode: 'mono',
+  });
 
-const arMarkerControls = new ArMarkerControls(arToolkitContext, camera, {
-  type: 'pattern',
-  patternUrl: './patt.hiro',
-  changeMatrixMode: 'modelViewMatrix',
-});
+  arToolkitContext.init(() => camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix()));
 
-arMarkerControls.addEventListener("markerFound", () => {
-  // マーカーが見つかっている時は毎秒呼ばれる
-  console.log("marker found");
-  document.body.style['background-color'] = '#f00';
-});
+  /*
+  let onRenderFcts = [];
+  onRenderFcts.push(() => {
+    if (arToolkitSource.ready === false) return;
+    arToolkitContext.update(arToolkitSource.domElement);
+    scene.visible = camera.visible;
+  });
+  */
+
+  arMarkerControls = new ArMarkerControls(arToolkitContext, camera, {
+    type: 'pattern',
+    patternUrl: './patt.hiro',
+    changeMatrixMode: 'cameraTransformMatrix',
+  });
+
+  arMarkerControls.addEventListener("markerFound", () => {
+    // マーカーが見つかっている時は毎秒呼ばれる
+    console.log("marker found");
+    document.body.style['background-color'] = '#f00';
+  });
+
+};
 
 const onResize = () => {
   arToolkitSource.onResizeElement();
@@ -189,6 +195,7 @@ const onResize = () => {
   if (arToolkitContext.arController) {
     arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
   }
+  console.log('yes')
 };
 
 window.addEventListener('resize', onResize);
@@ -215,7 +222,7 @@ function animate() {
   posGeo.applyQuaternion(qt234);
   geo.position.set(...posGeo.toArray());
 
-  if (arToolkitSource.ready) {
+  if (arToolkitSource?.ready) {
     arToolkitContext.update(arToolkitSource.domElement);
     //scene.visible = camera.visible;
   }
@@ -225,6 +232,10 @@ function animate() {
 }
 
 renderer.setAnimationLoop(animate);
+
+window.onload = () => {
+  document.body.onclick = arInit;
+};
     </script>
   </body>
 </html>
